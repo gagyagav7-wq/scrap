@@ -1,22 +1,15 @@
-"""
-main.py
-Entry point utama versi Interaktif (Bot Nanya).
-Jalankan: python3 main.py
-"""
-
 import asyncio
 import os
 import nest_asyncio
 
 # =====================================================================
-# 1. SETUP INTERAKTIF (BOT NANYA KE USER)
+# 1. SETUP INTERAKTIF + PATH INTERNAL STORAGE
 # =====================================================================
 import config.settings as settings
 
 def interactive_setup():
     print("\n" + "="*50)
-    print("🤖 SETUP BOT SCRAPER")
-    print("Kosongkan dan langsung tekan ENTER untuk pakai settingan default.")
+    print("🤖 SETUP BOT SCRAPER (INTERNAL STORAGE MODE)")
     print("="*50)
 
     # 1. Tanya URL Target
@@ -24,23 +17,34 @@ def interactive_setup():
     if url:
         settings.BASE_URL = url
 
-    # 2. Tanya Jumlah Tab (Concurrency)
-    conc = input(f"[?] Jumlah Tab Paralel ({settings.CONCURRENCY}): ").strip()
+    # 2. Tanya Lokasi Simpan
+    print("\n[?] Simpan hasil ke mana?")
+    print(" 1. Folder Script (Default)")
+    print(" 2. Internal HP (Folder Download/Scraper)")
+    pilihan = input("Pilih (1/2): ").strip()
+
+    if pilihan == "2":
+        # Path umum internal storage di Ubuntu PRoot/Chroot biasanya di /sdcard atau /storage/emulated/0
+        internal_path = "/sdcard/Download/Scraper_Results"
+        os.makedirs(internal_path, exist_ok=True)
+        settings.DB_PATH = f"{internal_path}/scraped_data.db"
+        # Kita juga perlu update path CSV di helpers nantinya kalau mau otomatis
+        print(f"✅ Lokasi diset ke: {internal_path}")
+    else:
+        os.makedirs("output", exist_ok=True)
+        print("✅ Lokasi diset ke: folder output internal script")
+
+    # 3. Tanya Jumlah Tab
+    conc = input(f"\n[?] Jumlah Tab Paralel ({settings.CONCURRENCY}): ").strip()
     if conc.isdigit():
         settings.CONCURRENCY = int(conc)
 
-    # 3. Tanya Limit Film
-    limit = input(f"[?] Limit film per kategori ({settings.MAX_MOVIES_PER_CATEGORY}): ").strip()
-    if limit.isdigit():
-        settings.MAX_MOVIES_PER_CATEGORY = int(limit)
-
     print("="*50 + "\n")
 
-# Panggil fungsi tanya jawabnya SEBELUM script lain diload
 interactive_setup()
 
 # =====================================================================
-# 2. IMPORT MODUL LAIN SETELAH SETTINGS DIUPDATE
+# 2. IMPORT MODUL (Sama seperti sebelumnya)
 # =====================================================================
 from playwright.async_api import async_playwright
 from core.browser import create_browser_context
@@ -51,53 +55,37 @@ from utils.helpers import export_to_csv, print_banner, print_stats
 
 nest_asyncio.apply()
 
-# Pastikan folder output ada
-os.makedirs("output", exist_ok=True)
-
 async def main():
     print_banner()
-    print(f"🌍 Target Website: {settings.BASE_URL}")
-    print(f"🚀 Memulai scraping dengan {settings.CONCURRENCY} tab paralel...\n")
+    
+    # Pastikan directory DB sudah ada sebelum writer jalan
+    db_dir = os.path.dirname(settings.DB_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
 
-    # Start background DB writer
     writer_task = asyncio.create_task(db_writer())
 
     async with async_playwright() as p:
         browser, context = await create_browser_context(p)
-
         try:
-            # FASE 1: Discovery
-            print("=" * 50)
-            print("FASE 1: DISCOVERY")
-            print("=" * 50)
             targets = await discover_targets(context)
-
-            if not targets:
-                print("⚠️  Tidak ada target ditemukan. Cek SEED_PATHS di config/settings.py")
-                return
-
-            # FASE 2: Panen
-            print("\n" + "=" * 50)
-            print(f"FASE 2: SCRAPING ({len(targets)} kategori)")
-            print("=" * 50)
+            if not targets: return
 
             for target in targets:
                 await scrape_category(context, target)
-
         finally:
             await browser.close()
 
-    # SHUTDOWN PROTOCOL
-    print("\n⏳ Menyelesaikan penulisan database...")
     await DB_QUEUE.join()
-    await DB_QUEUE.put(None)  # Sinyal shutdown ke writer
+    await DB_QUEUE.put(None)
     await writer_task
 
-    # Laporan akhir
-    print("\n" + "=" * 50)
     print_stats()
-    export_to_csv()
-    print("✨ OPERASI SELESAI!")
+    # Export CSV ke lokasi yang sama dengan DB
+    csv_path = settings.DB_PATH.replace(".db", ".csv")
+    export_to_csv(db_path=settings.DB_PATH, output_path=csv_path)
+    
+    print(f"\n✨ SELESAI! Cek file di: {settings.DB_PATH}")
 
 if __name__ == "__main__":
     asyncio.run(main())
