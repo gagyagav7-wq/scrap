@@ -1,0 +1,73 @@
+# ============================================================
+
+# UNIVERSAL SCRAPER - KONFIGURASI UTAMA
+
+# Edit file ini untuk ganti target website
+
+# ============================================================
+
+# — TARGET WEBSITE —
+
+BASE_URL = “http://178.62.86.69”  # Ganti ke website apapun
+
+# — DATABASE —
+
+DB_PATH = “output/scraped_data.db”
+
+# — PERFORMANCE —
+
+CONCURRENCY = 6       # Jumlah tab browser paralel (naik jika RAM besar)
+CHUNK_SIZE = 10       # Jumlah URL per batch
+DB_QUEUE_SIZE = 3000  # Buffer antrian database
+
+# — TIMEOUT (dalam ms) —
+
+GOTO_TIMEOUT = 45000      # Timeout load halaman
+SELECTOR_TIMEOUT = 15000  # Timeout tunggu elemen
+SNIFF_WAIT = 5            # Detik tunggu video stream muncul
+
+# — SEED PAGES: Halaman awal untuk discovery —
+
+SEED_PATHS = [
+“/”,
+“/best-rating/”,
+“/tag/lk21/”,
+# Tambah path lain sesuai kebutuhan:
+# “/popular/”,
+# “/latest/”,
+]
+
+# — PATTERN DISCOVERY: Regex untuk nemu kategori —
+
+# Format: (regex_pattern, group_for_type, group_for_name)
+
+CATEGORY_PATTERNS = [
+(r”/(genre|country|year|tag)/([^/]+)/”, 1, 2),
+# Tambah pattern lain:
+# (r”/(category)/([^/]+)/”, 1, 2),
+]
+
+# — SELECTOR: CSS selector untuk ekstrak data —
+
+SELECTORS = {
+“title”: “h1”,                        # Selector judul
+“synopsis”: “.entry-content p”,       # Selector sinopsis
+“poster”: “.poster img, .thumb img”,  # Selector gambar poster
+“movie_list”: “.gmr-item a, article a”,  # Selector list film di halaman kategori
+}
+
+# — STREAM DETECTION: Pattern URL video yang dicari —
+
+STREAM_PATTERNS = [”.m3u8”, “.mp4”, “embed”, “stream”, “player”]
+
+# — BROWSER —
+
+USER_AGENT = “Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36”
+
+# — BLOCKED RESOURCES: Hemat bandwidth —
+
+BLOCKED_RESOURCE_TYPES = [“image”, “media”, “font”]
+
+# — LIMITS —
+
+MAX_MOVIES_PER_CATEGORY = 40  # 0 = unlimited
