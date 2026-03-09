@@ -1,37 +1,46 @@
 """
 main.py
-Entry point utama versi CLI.
-Jalankan: python3 main.py --help
+Entry point utama versi Interaktif (Bot Nanya).
+Jalankan: python3 main.py
 """
 
 import asyncio
 import os
-import argparse
 import nest_asyncio
 
 # =====================================================================
-# 1. SETUP CLI MENGGUNAKAN ARGPARSE (HARUS DI ATAS!)
-# =====================================================================
-parser = argparse.ArgumentParser(description="🕷️ UNIVERSAL SCRAPER CLI")
-parser.add_argument("-u", "--url", type=str, help="Target Base URL (contoh: http://178.62.86.69)")
-parser.add_argument("-c", "--concurrency", type=int, help="Jumlah tab browser paralel (default dari settings)")
-parser.add_argument("-l", "--limit", type=int, help="Max movie per kategori (0 = unlimited)")
-args = parser.parse_args()
-
-# =====================================================================
-# 2. OVERRIDE SETTINGS SECARA DINAMIS DI MEMORI
+# 1. SETUP INTERAKTIF (BOT NANYA KE USER)
 # =====================================================================
 import config.settings as settings
 
-if args.url:
-    settings.BASE_URL = args.url
-if args.concurrency is not None:
-    settings.CONCURRENCY = args.concurrency
-if args.limit is not None:
-    settings.MAX_MOVIES_PER_CATEGORY = args.limit
+def interactive_setup():
+    print("\n" + "="*50)
+    print("🤖 SETUP BOT SCRAPER")
+    print("Kosongkan dan langsung tekan ENTER untuk pakai settingan default.")
+    print("="*50)
+
+    # 1. Tanya URL Target
+    url = input(f"[?] Target URL ({settings.BASE_URL}): ").strip()
+    if url:
+        settings.BASE_URL = url
+
+    # 2. Tanya Jumlah Tab (Concurrency)
+    conc = input(f"[?] Jumlah Tab Paralel ({settings.CONCURRENCY}): ").strip()
+    if conc.isdigit():
+        settings.CONCURRENCY = int(conc)
+
+    # 3. Tanya Limit Film
+    limit = input(f"[?] Limit film per kategori ({settings.MAX_MOVIES_PER_CATEGORY}): ").strip()
+    if limit.isdigit():
+        settings.MAX_MOVIES_PER_CATEGORY = int(limit)
+
+    print("="*50 + "\n")
+
+# Panggil fungsi tanya jawabnya SEBELUM script lain diload
+interactive_setup()
 
 # =====================================================================
-# 3. IMPORT MODUL LAIN SETELAH SETTINGS DIUPDATE
+# 2. IMPORT MODUL LAIN SETELAH SETTINGS DIUPDATE
 # =====================================================================
 from playwright.async_api import async_playwright
 from core.browser import create_browser_context
@@ -47,8 +56,8 @@ os.makedirs("output", exist_ok=True)
 
 async def main():
     print_banner()
-    print(f"🌍 Target URL: {settings.BASE_URL}")
-    print(f"🚀 Memulai operasi scraping dengan {settings.CONCURRENCY} tab paralel...\n")
+    print(f"🌍 Target Website: {settings.BASE_URL}")
+    print(f"🚀 Memulai scraping dengan {settings.CONCURRENCY} tab paralel...\n")
 
     # Start background DB writer
     writer_task = asyncio.create_task(db_writer())
